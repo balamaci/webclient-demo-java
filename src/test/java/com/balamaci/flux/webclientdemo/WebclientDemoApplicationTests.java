@@ -9,7 +9,10 @@ import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -28,6 +31,8 @@ public class WebclientDemoApplicationTests extends BaseWebclientTest {
 	private WebClient webClientBuilder() {
 		return WebClient.builder()
 				.baseUrl("http://localhost:" + port)
+				.defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+				.filter(logResponseFilter())
 				.build();
 	}
 
@@ -64,7 +69,7 @@ public class WebclientDemoApplicationTests extends BaseWebclientTest {
 				.map(order -> new Pair<>(user, order))
 		);
 
-		users.subscribe(logNext(), logError(latch), logComplete(latch));
+		orders.subscribe(logNext(), logError(latch), logComplete(latch));
 		latch.await();
 	}
 
@@ -73,7 +78,7 @@ public class WebclientDemoApplicationTests extends BaseWebclientTest {
 		CountDownLatch latch = new CountDownLatch(1);
 		WebClient webClient = webClientBuilder();
 
-		Mono<String> bannedUser = Mono.justOrEmpty(User.BANNED_USER.getUsername());
+		Mono<String> bannedUser = Mono.just(User.BANNED_USER.getUsername());
 
 		Flux<String> usersIds = webClient
 				.get()
@@ -96,6 +101,60 @@ public class WebclientDemoApplicationTests extends BaseWebclientTest {
 
 		users.subscribe(logNext(), logError(latch), logComplete(latch));
 		latch.await();
+	}
+
+	@Test
+	public void retrieveNonExistentUser() throws Exception {
+		CountDownLatch latch = new CountDownLatch(1);
+
+		String userId = "potter";
+		webClientBuilder()
+				.get()
+				.uri("/users/{username}", userId)
+				.retrieve()
+//				.onStatus(HttpStatus::is4xxClientError,
+//						clientResponse -> {
+//
+//							String response = clientResponse.bodyToMono(String.class);
+//						})
+				.bodyToFlux(User.class)
+				.subscribe(logNext(), logError(latch), logComplete(latch));
+		latch.await();
+	}
+
+	@Test
+	public void addInvalidUser() throws Exception {
+		CountDownLatch latch = new CountDownLatch(1);
+
+		User bannedUser = User.BANNED_USER;
+		webClientBuilder()
+				.post()
+				.uri("/users")
+				.body(Mono.just(bannedUser), User.class)
+				.exchange()
+				.subscribe(logNext(), logError(latch), logComplete(latch));
+		latch.await();
+	}
+
+	@Test
+	public void addDuplicateUser() throws Exception {
+		CountDownLatch latch = new CountDownLatch(1);
+
+		User existingUser = new User("tyrion", "Evil Tyrion");
+		webClientBuilder()
+				.post()
+				.uri("/users")
+				.body(Mono.just(existingUser), User.class)
+				.exchange()
+				.subscribe(logNext(), logError(latch), logComplete(latch));
+		latch.await();
+	}
+
+	private ExchangeFilterFunction logResponseFilter() {
+		return ExchangeFilterFunction.ofResponseProcessor(clientResponse -> {
+			log.info("Received response statusCode={}", clientResponse.statusCode());
+			return Mono.just(clientResponse);
+		});
 	}
 
 }

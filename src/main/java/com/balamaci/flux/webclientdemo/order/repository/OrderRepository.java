@@ -61,4 +61,8 @@ public class OrderRepository {
                 .doOnNext(order -> log.info("Sending {}", order));
     }
 
+    public void addOrder() {
+
+    }
+
 }
