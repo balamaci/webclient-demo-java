@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class CustomWebExceptionHandler {
 
     @ExceptionHandler
-    public ResponseEntity<String> handleNotFoundException(DuplicateEntityException ex) {
-        log.info("Handling DuplicateEntityException");
+    public ResponseEntity<String> handleDuplicateEntityException(DuplicateEntityException ex) {
+        log.info("Custom global exception handler: Handling DuplicateEntityException from global");
         return ResponseEntity.badRequest().build();
     }
 

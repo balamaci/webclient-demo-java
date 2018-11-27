@@ -1,6 +1,7 @@
 package com.balamaci.flux.webclientdemo.user.controller;
 
 
+import com.balamaci.flux.webclientdemo.common.exception.DuplicateEntityException;
 import com.balamaci.flux.webclientdemo.user.User;
 import com.balamaci.flux.webclientdemo.user.exception.UserNotFoundException;
 import com.balamaci.flux.webclientdemo.user.repository.UserRepository;
@@ -51,11 +52,13 @@ public class UserController {
     }
 
     @PostMapping
-    public void addUser(@Valid @RequestBody User user) {
-//        userRepository.getAllUsers()
-//                .filter(itUser -> itUser.getUsername().equals(user.getUsername()))
-//            .switchIfEmpty(() -> userRepository.addUser(user));
-        userRepository.addUser(user);
+    public Mono<Void> addUser(@Valid @RequestBody User user) {
+        return userRepository.getAllUsers()
+                .filter((it) -> it.getUsername().equals(user.getUsername()))
+                .map(it -> {
+                    throw new DuplicateEntityException();
+                })
+                .thenEmpty(userRepository.addUser(user));
     }
 
     @ExceptionHandler

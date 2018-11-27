@@ -26,9 +26,13 @@ public class UserRepository {
                 .singleOrEmpty();
     }
 
-    public void addUser(User user) {
-        log.info("Adding {}", user);
-        users.add(user);
+    public Mono<Void> addUser(User user) {
+        return Mono.defer(() -> {
+            log.info("Adding {}", user);
+            users.add(user);
+
+            return null;
+        });
     }
 
     public Flux<User> getAllUsers() {
