@@ -149,8 +149,11 @@ public class WebclientDemoApplicationTests extends BaseWebclientTest {
 				.exchange()
 				.flatMap(clientResponse -> {
 					if(clientResponse.statusCode().isError()) {
-						log.error("Got error on user creation {}", clientResponse.toEntity(ApiError.class));
-						return Mono.error(new RuntimeException("Exception on user creation"));
+						return clientResponse.bodyToMono(ApiError.class)
+								.map(apiError -> {
+									log.error("Got error on user creation {}", apiError);
+									return Mono.error(new RuntimeException("Exception on user creation"));
+								});
 					}
 					return clientResponse.bodyToMono(Void.class); //consume response
 				} )
