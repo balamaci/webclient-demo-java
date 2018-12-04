@@ -1,5 +1,6 @@
 package com.balamaci.flux.webclientdemo;
 
+import com.balamaci.flux.webclientdemo.common.exception.ApiError;
 import com.balamaci.flux.webclientdemo.order.Order;
 import com.balamaci.flux.webclientdemo.user.User;
 import javafx.util.Pair;
@@ -146,6 +147,13 @@ public class WebclientDemoApplicationTests extends BaseWebclientTest {
 				.uri("/users")
 				.body(Mono.just(existingUser), User.class)
 				.exchange()
+				.flatMap(clientResponse -> {
+					if(clientResponse.statusCode().isError()) {
+						log.error("Got error on user creation {}", clientResponse.toEntity(ApiError.class));
+						return Mono.error(new RuntimeException("Exception on user creation"));
+					}
+					return clientResponse.bodyToMono(Void.class); //consume response
+				} )
 				.subscribe(logNext(), logError(latch), logComplete(latch));
 		latch.await();
 	}
